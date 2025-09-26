@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>YDS Gün 1 Kelime Oyunu</title>
+  <style>
+    :root{--bg:#0f172a;--card:#111827;--ink:#e5e7eb;--muted:#9ca3af;--accent:#22c55e;--warn:#ef4444;--brand:#38bdf8}
+    *{box-sizing:border-box} body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Inter,Arial;background:linear-gradient(180deg,#0b1023,#0b132b);color:var(--ink)}
+    .wrap{max-width:760px;margin:0 auto;padding:16px}
+    header{position:sticky;top:0;backdrop-filter:blur(8px);background:rgba(11,16,35,.7);z-index:3;padding:10px 16px;border-bottom:1px solid #1f2937}
+    h1{font-size:1.2rem;margin:0}
+    .card{background:linear-gradient(180deg,#0f172a,#0b1227);border:1px solid #1f2937;border-radius:16px;padding:16px;box-shadow:0 10px 40px rgba(0,0,0,.35)}
+    .row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+    .pill{font-size:.8rem;border:1px solid #1f2937;border-radius:999px;padding:6px 10px;color:var(--muted)}
+    .progress{height:10px;background:#0b1020;border-radius:999px;overflow:hidden;border:1px solid #1f2937}
+    .bar{height:100%;background:linear-gradient(90deg,#22c55e,#38bdf8)}
+    .qword{font-size:1.8rem;font-weight:700;letter-spacing:.2px;margin:4px 0 10px}
+    .choices{display:grid;grid-template-columns:1fr;gap:10px;margin-top:10px}
+    .choice{width:100%;text-align:left;border:1px solid #1f2937;background:#0b1120;color:var(--ink);padding:14px;border-radius:12px;font-size:1rem;cursor:pointer;transition:transform .06s ease, border-color .2s}
+    .choice:hover{transform:translateY(-1px)}
+    .choice.correct{border-color:rgba(34,197,94,.8)}
+    .choice.wrong{border-color:rgba(239,68,68,.8)}
+    .status{min-height:28px;margin-top:6px;color:var(--muted)}
+    .btns{display:flex;gap:10px;flex-wrap:wrap;margin-top:12px}
+    .btn{background:#0b1120;border:1px solid #1f2937;color:var(--ink);padding:10px 14px;border-radius:12px;cursor:pointer}
+    .btn.primary{background:linear-gradient(90deg,#38bdf8,#22d3ee);border:none;color:#051015;font-weight:700}
+    .btn.ghost{opacity:.9}
+    .grid2{display:grid;grid-template-columns:1fr;gap:12px}
+    @media (min-width:560px){.grid2{grid-template-columns:1fr 1fr}}
+    .mini{font-size:.85rem;color:var(--muted)}
+    .tag{display:inline-block;padding:4px 8px;border:1px solid #1f2937;border-radius:8px;margin:4px 6px 0 0;font-size:.8rem;color:#93c5fd}
+    .toast{position:fixed;bottom:14px;left:50%;transform:translateX(-50%);background:#0b1120;border:1px solid #1f2937;padding:10px 14px;border-radius:12px;color:var(--ink);box-shadow:0 8px 30px rgba(0,0,0,.35);display:none}
+    .modal{position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(3,6,17,.7)}
+    .modal .inner{max-width:620px;background:#0b1120;border:1px solid #1f2937;border-radius:16px;padding:16px}
+    footer{opacity:.8;font-size:.8rem;margin:20px auto 40px;text-align:center;color:var(--muted)}
+  </style>
+</head>
+<body>
+  <header class="row">
+    <h1>YDS Gün 1 – Kelime Oyunu</h1>
+    <div class="pill" id="statsPill">Doğru: 0 · Yanlış: 0 · Ustalaşan: 0/20</div>
+  </header>
+  <div class="wrap">
+    <div class="card">
+      <div class="grid2">
+        <div>
+          <div class="mini">Soru</div>
+          <div class="qword" id="word">—</div>
+          <div class="mini" id="hint"></div>
+        </div>
+        <div>
+          <div class="mini">İlerleme</div>
+          <div class="progress"><div class="bar" id="bar" style="width:0%"></div></div>
+          <div class="mini" style="margin-top:6px">Her kelime 2 kez ardışık doğru → <span style="color:#93c5fd">Ustalaşmış</span> sayılır.</div>
+        </div>
+      </div>
+      <div class="choices" id="choices"></div>
+      <div class="status" id="status">Doğru anlamı seçin. Yanlış yaparsanız doğru cevap gösterilir ve o kelime daha sık sorulur.</div>
+      <div class="btns">
+        <button class="btn" id="revealBtn">İpucu</button>
+        <button class="btn ghost" id="skipBtn">Pas</button>
+        <button class="btn primary" id="resetBtn">Sıfırla</button>
+      </div>
+      <div style="margin-top:10px">
+        <span class="tag">Mobil uyumlu</span>
+        <span class="tag">Adaptif tekrar</span>
+        <span class="tag">Yerel kayıt</span>
+      </div>
+    </div>
+    <footer>Gün 1 kelimeleri • İlerleme cihazınızda <em>localStorage</em>'a kaydedilir.</footer>
+  </div>
+
+  <div class="toast" id="toast">Kaydedildi</div>
+
+  <div class="modal" id="winModal">
+    <div class="inner">
+      <h2>🎉 Harika! Gün 1 kelimelerini BAŞARIYLA öğrendiniz.</h2>
+      <p>Her kelimeyi ardışık <strong>2 kez</strong> doğru cevapladınız. İsterseniz devam edip hızınızı artırabilir ya da yarın Gün 2 listesine geçebilirsiniz.</p>
+      <div class="btns">
+        <button class="btn" id="continueBtn">Devam et ve pekiştir</button>
+        <button class="btn primary" id="closeWin">Kapat</button>
+      </div>
+    </div>
+  </div>
+
+<script>
+/**
+ * Gün 1 – 20 kelime (EN → TR)
+ */
+const WORDS = [
+  { w:"abandon", m:"terk etmek" },
+  { w:"ability", m:"yetenek" },
+  { w:"able", m:"-ebilmek / yapabilen" },
+  { w:"abolish", m:"yürürlükten kaldırmak" },
+  { w:"absence", m:"yokluk / devamsızlık" },
+  { w:"absolute", m:"mutlak" },
+  { w:"abstract", m:"soyut" },
+  { w:"abundant", m:"bol / bereketli" },
+  { w:"academic", m:"akademik" },
+  { w:"accept", m:"kabul etmek" },
+  { w:"access", m:"erişim; erişmek" },
+  { w:"accident", m:"kaza" },
+  { w:"accompany", m:"eşlik etmek" },
+  { w:"accomplish", m:"başarmak; gerçekleştirmek" },
+  { w:"according to", m:"-e göre" },
+  { w:"account", m:"hesap" },
+  { w:"accurate", m:"doğru; hatasız" },
+  { w:"accuse", m:"suçlamak" },
+  { w:"achieve", m:"elde etmek; başarmak" },
+  { w:"acknowledge", m:"kabul etmek; tanımak" }
+];
+
+// State per entry
+let state = WORDS.map((x,i)=>({
+  idx:i, weight:1, streak:0, seen:0, wrong:0, mastered:false
+}));
+
+// Load progress
+(function load(){
+  try{
+    const saved = JSON.parse(localStorage.getItem('yds_day1_progress'));
+    if(saved && Array.isArray(saved) && saved.length===state.length){
+      state = saved;
+    }
+  }catch(e){}
+})();
+
+const qEl = document.getElementById('word');
+const hintEl = document.getElementById('hint');
+const choicesEl = document.getElementById('choices');
+const statusEl = document.getElementById('status');
+const barEl = document.getElementById('bar');
+const statsPill = document.getElementById('statsPill');
+const toast = document.getElementById('toast');
+const modal = document.getElementById('winModal');
+
+let current = null; // {idx, correctMeaning, options:[]}
+let correct = 0, wrong = 0;
+
+function save(){
+  localStorage.setItem('yds_day1_progress', JSON.stringify(state));
+  toast.style.display='block';
+  setTimeout(()=>toast.style.display='none',900);
+}
+
+function progress(){
+  const mastered = state.filter(s=>s.mastered).length;
+  const pct = Math.round(mastered/state.length*100);
+  barEl.style.width = pct+"%";
+  statsPill.textContent = `Doğru: ${correct} · Yanlış: ${wrong} · Ustalaşan: ${mastered}/${state.length}`;
+  if(mastered===state.length){
+    modal.style.display='flex';
+  }
+}
+
+function choiceButton(text){
+  const b=document.createElement('button');
+  b.className='choice';
+  b.textContent=text;
+  b.onclick=()=>handleAnswer(text);
+  return b;
+}
+
+function weightedPick(){
+  // Exclude mastered from pool 70% of time but keep a 30% chance to recycle for reinforcement
+  const recycle = Math.random()<0.3;
+  const pool = state.filter(s=>recycle || !s.mastered);
+  const total = pool.reduce((a,b)=>a+b.weight,0);
+  let r = Math.random()*total;
+  for(const s of pool){
+    r -= s.weight;
+    if(r<=0) return s.idx;
+  }
+  return pool[pool.length-1].idx;
+}
+
+function buildQuestion(){
+  const idx = weightedPick();
+  const entry = WORDS[idx];
+  const correctMeaning = entry.m;
+  // pick 3 distractors
+  let pool = WORDS.map(x=>x.m).filter(m=>m!==correctMeaning);
+  shuffle(pool);
+  const opts = shuffle([correctMeaning, ...pool.slice(0,3)]);
+  current = { idx, correctMeaning, opts };
+  renderQuestion(entry.w, opts);
+}
+
+function renderQuestion(word, options){
+  qEl.textContent = word;
+  hintEl.textContent = '';
+  choicesEl.innerHTML='';
+  options.forEach(o=>choicesEl.appendChild(choiceButton(o)));
+}
+
+function handleAnswer(selected){
+  if(!current) return;
+  const { idx, correctMeaning } = current;
+  const nodes = Array.from(document.querySelectorAll('.choice'));
+  nodes.forEach(n=>n.disabled=true);
+  const s = state[idx];
+  s.seen++;
+  if(selected===correctMeaning){
+    correct++;
+    s.streak++;
+    statusEl.innerHTML = `✅ Doğru! <em>${WORDS[idx].w}</em> = <strong>${correctMeaning}</strong>`;
+    nodes.find(n=>n.textContent===selected)?.classList.add('correct');
+    // Reward: decrease weight (min 0.6)
+    s.weight = Math.max(0.6, s.weight*0.75);
+    if(s.streak>=2){ s.mastered=true; }
+  } else {
+    wrong++;
+    s.streak=0;
+    statusEl.innerHTML = `❌ Yanlış. Doğru cevap: <em>${WORDS[idx].w}</em> = <strong>${correctMeaning}</strong>`;
+    nodes.find(n=>n.textContent===selected)?.classList.add('wrong');
+    nodes.find(n=>n.textContent===correctMeaning)?.classList.add('correct');
+    s.wrong++;
+    // Penalty: increase weight (max 6) so it appears more often
+    s.weight = Math.min(6, s.weight*1.9 + 0.2);
+  }
+  save();
+  progress();
+  // Next question slightly delayed
+  setTimeout(()=>buildQuestion(), 650);
+}
+
+function shuffle(a){
+  for(let i=a.length-1;i>0;i--){
+    const j=Math.floor(Math.random()*(i+1));
+    [a[i],a[j]]=[a[j],a[i]];
+  }
+  return a;
+}
+
+// Buttons
+ document.getElementById('revealBtn').onclick = ()=>{
+   if(!current) return;
+   hintEl.textContent = `İpucu: ${current.correctMeaning}`;
+ };
+ document.getElementById('skipBtn').onclick = ()=>{
+   statusEl.textContent = 'Geçildi. Bir sonraki soru…';
+   buildQuestion();
+ };
+ document.getElementById('resetBtn').onclick = ()=>{
+   if(confirm('Tüm ilerlemeyi sıfırlamak istiyor musunuz?')){
+     state = WORDS.map((x,i)=>({idx:i,weight:1,streak:0,seen:0,wrong:0,mastered:false}));
+     correct=0; wrong=0; save(); progress(); buildQuestion();
+   }
+ };
+ document.getElementById('closeWin').onclick = ()=>{ modal.style.display='none'; };
+ document.getElementById('continueBtn').onclick = ()=>{ modal.style.display='none'; buildQuestion(); };
+
+// Kickoff
+progress();
+buildQuestion();
+</script>
+</body>
+</html>
